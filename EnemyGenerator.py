@@ -18,6 +18,8 @@ playerlist = ["Placeholder"]
 
 playerobjects = []
 
+generatedstats = []
+
 
 class player:
     def __init__(self, NAME, HP, STR, MAG, SKL, SPD, LUK, DEF, RES, BHIT, BAVO, BCRIT, OFF):
@@ -66,6 +68,13 @@ def calculatehitrate(hit, avoid):
     return max(min(1, (hit - avoid)/20), 0.05)
 
 
+def calculatedouble(enemyspeed, playerspeed):
+    if enemyspeed + 5 >= playerspeed:
+        return True
+    else:
+        return False
+
+
 def calculatedps(hitrate, critrate, attackstat, defenderstat, candouble):
     basedamage = max(attackstat - defenderstat, 0)
     if basedamage == 0:
@@ -96,56 +105,80 @@ def settext(e, s):
     e.insert(0, s)
 
 
+def calculatematchup(player, enemy):
+    php = player.HP
+    ehp = enemy[0]
+    pdps = 0
+    if player.offensivestat == "STR":
+        pdps = calculatedps(calculatehitrate(calculatehit(player.basehit, player.skill, player.luck), calculateavoid(7, enemy[4], enemy[5])), calculatecrit(player.skill, enemy[5]), player.strength, enemy[6], calculatedouble(player.speed, enemy[4]))
+    else:
+        pdps = calculatedps(calculatehitrate(calculatehit(player.basehit, player.skill, player.luck), calculateavoid(7, enemy[4], enemy[5])), calculatecrit(player.skill, enemy[5]), player.magic, enemy[7], calculatedouble(player.speed, enemy[4]))
+    print("player dps: " + str(pdps))
+    edps = 0
+    if enemy[1] > enemy[2]:
+        edps = calculatedps(calculatehitrate(calculatehit(0, enemy[3], enemy[5]), calculateavoid(player.baseavoid, player.speed, player.luck)), calculatecrit(enemy[3], player.luck), enemy[1], player.defense, calculatedouble(enemy[4], player.speed))
+    else:
+        edps = calculatedps(calculatehitrate(calculatehit(0, enemy[3], enemy[5]), calculateavoid(player.baseavoid, player.speed, player.luck)), calculatecrit(enemy[3], player.luck), enemy[2], player.resistance, calculatedouble(enemy[4], player.speed))
+    print("enemy dps: " + str(edps))
+    while php > 0 and ehp > 0:
+        php -= edps
+        ehp -= pdps
+    if php <= 0:
+        return True
+    else:
+        return False
+
+
+def validate(stats, players, target):
+    print("testting statrange " + str(stats))
+    playerwins = 0
+    for i in range(len(players)):
+        print("testting matchup vs " + players[i].name)
+        if calculatematchup(players[i], stats):
+            print("matchup won")
+            playerwins += 1
+        else:
+            print("matchup lost")
+    if playerwins == target:
+        return True
+    else:
+        return False
+
+
 def generate():
     global playernum
     global basetable
+    global generatedstats
     # get percentage of players enemy can beat, set to 50 by default if invalid value
     if type(percententry.get()) != type(int):
         settext(percententry, "50")
     percent = int(percententry.get())
-    # set bound values for important stats
-    minstr = 0
-    maxstr = 0
-    minmag = 0
-    maxmag = 0
-    mindef = 0
-    maxdef = 0
-    minres = 0
-    maxres = 0
-    # for now, randomly generate ratio of offense to defense
-    # also randomly generate a target hitrate for average avoid
-    # if enemy generic, can probably just have target crit rate be 19 or 20 dependent on average
-    # consider having a table of what dps changes a stat increment will have and update based on that
-    # query user for minimum hitrate enemy will have against
-    # tempstats = [0] * 8
-    # playersbeaten = int(float(percent/100) * playernum)
-    # enemydps = [0] * playernum
-    # playerdps = [0] * playernum
-    # enemywinmargin = [0] * playernum
-    # playerwinmargin = [0] * playernum
-    # hpinc = [0] * playernum
-    # hpdec = [0] * playernum
-    # strinc = [0] * playernum
-    # strdec = [0] * playernum
-    # maginc = [0] * playernum
-    # magdec = [0] * playernum
-    # sklinc = [0] * playernum
-    # skldec = [0] * playernum
-    # spdinc = [0] * playernum
-    # spddec = [0] * playernum
-    # luckinc = [0] * playernum
-    # luckdec = [0] * playernum
-    # definc = [0] * playernum
-    # defdec = [0] * playernum
-    # resinc = [0] * playernum
-    # resdec = [0] * playernum
-    # for i in range(8):
-    #     tempstats[i] = int(basetable[statnames[i+1]].mean())
-    #     tempstats[i] = int((random.random() * 0.4 - 0.2) * tempstats[i])
-    #     if tempstats[i] < 0:
-    #         tempstats[i] = 0
-    
-
+    tempstats = [0] * 8
+    playersbeaten = int(float(percent/100) * playernum)
+    for i in range(8):
+        tempstats[i] = int(basetable[statnames[i+1]].mean())
+        tempstats[i] = int((1 + random.random() * 0.6 - 0.3) * tempstats[i])
+        if tempstats[i] < 0:
+            tempstats[i] = 0
+    while not validate(tempstats, playerobjects, playersbeaten):
+        for i in range(8):
+            tempstats[i] = int(basetable[statnames[i + 1]].mean())
+            tempstats[i] = int((1 + random.random() * 0.6 - 0.3) * tempstats[i])
+            if tempstats[i] < 0:
+                tempstats[i] = 0
+    generatedstats = tempstats
+    statstring = ""
+    statstring += "HP: " + str(generatedstats[0]) + "\n"
+    statstring += "STR: " + str(generatedstats[1]) + "\n"
+    statstring += "MAG: " + str(generatedstats[2]) + "\n"
+    statstring += "SKL: " + str(generatedstats[3]) + "\n"
+    statstring += "SPD: " + str(generatedstats[4]) + "\n"
+    statstring += "LUCK: " + str(generatedstats[5]) + "\n"
+    statstring += "DEF: " + str(generatedstats[6]) + "\n"
+    statstring += "RES: " + str(generatedstats[7]) + "\n"
+    statstring += "\n\n\n\nPlease note that these stats do not take into account weapons, skills, etc., and should be " \
+                  "tuned accordingly for your purposes."
+    outputtext['text'] = statstring
 
 
 def selectfile():
