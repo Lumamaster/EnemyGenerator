@@ -3,7 +3,6 @@ import tkinter.ttk as ttk
 import pandas as pd
 import numpy as np
 import math
-import random
 from tkinter.filedialog import askopenfilename
 
 filepath = ""
@@ -18,7 +17,7 @@ playerlist = ["Placeholder"]
 
 playerobjects = []
 
-generatedstats = []
+enemystats = []
 
 
 class player:
@@ -120,16 +119,18 @@ def calculatematchup(player, enemy):
     else:
         edps = calculatedps(calculatehitrate(calculatehit(0, enemy[3], enemy[5]), calculateavoid(player.baseavoid, player.speed, player.luck)), calculatecrit(enemy[3], player.luck), enemy[2], player.resistance, calculatedouble(enemy[4], player.speed))
     print("enemy dps: " + str(edps))
-    while php > 0 and ehp > 0:
+    loopbreak = 0
+    while php > 0 and ehp > 0 and loopbreak < 10:
         php -= edps
         ehp -= pdps
+        loopbreak += 1
     if php <= 0:
         return True
     else:
         return False
 
 
-def validate(stats, players, target):
+def validate(stats, players):
     print("testting statrange " + str(stats))
     playerwins = 0
     for i in range(len(players)):
@@ -139,46 +140,23 @@ def validate(stats, players, target):
             playerwins += 1
         else:
             print("matchup lost")
-    if playerwins == target:
-        return True
-    else:
-        return False
+    return playerwins
 
 
 def generate():
     global playernum
     global basetable
-    global generatedstats
-    # get percentage of players enemy can beat, set to 50 by default if invalid value
-    if type(percententry.get()) != type(int):
-        settext(percententry, "50")
-    percent = int(percententry.get())
-    tempstats = [0] * 8
-    playersbeaten = int(float(percent/100) * playernum)
-    for i in range(8):
-        tempstats[i] = int(basetable[statnames[i+1]].mean())
-        tempstats[i] = int((1 + random.random() * 0.6 - 0.3) * tempstats[i])
-        if tempstats[i] < 0:
-            tempstats[i] = 0
-    while not validate(tempstats, playerobjects, playersbeaten):
-        for i in range(8):
-            tempstats[i] = int(basetable[statnames[i + 1]].mean())
-            tempstats[i] = int((1 + random.random() * 0.6 - 0.3) * tempstats[i])
-            if tempstats[i] < 0:
-                tempstats[i] = 0
-    generatedstats = tempstats
-    statstring = ""
-    statstring += "HP: " + str(generatedstats[0]) + "\n"
-    statstring += "STR: " + str(generatedstats[1]) + "\n"
-    statstring += "MAG: " + str(generatedstats[2]) + "\n"
-    statstring += "SKL: " + str(generatedstats[3]) + "\n"
-    statstring += "SPD: " + str(generatedstats[4]) + "\n"
-    statstring += "LUCK: " + str(generatedstats[5]) + "\n"
-    statstring += "DEF: " + str(generatedstats[6]) + "\n"
-    statstring += "RES: " + str(generatedstats[7]) + "\n"
-    statstring += "\n\n\n\nPlease note that these stats do not take into account weapons, skills, etc., and should be " \
-                  "tuned accordingly for your purposes."
-    outputtext['text'] = statstring
+    global enemystats
+    if not verifystats():
+        createerror("One or more enemy stats were invalid! Please make sure that they are all positive integers.")
+    else:
+        generatedstats = [int(hpbox.get()), int(strbox.get()), int(magbox.get()), int(sklbox.get()), int(spdbox.get()), int(luckbox.get()), int(defbox.get()), int(resbox.get())]
+        # get percentage of players enemy can beat, set to 50 by default if invalid value
+        wins = validate(generatedstats, playerobjects)
+        statstring = "This generic wins against " + str(wins) + " players."
+        outputtext['text'] = statstring
+        enemystats = generatedstats
+        testplayer.config(state='active')
 
 
 def selectfile():
@@ -230,7 +208,7 @@ def selectfile():
     offnames = []
     for o in offstats:
         offnames.append(o)
-    offenseselect['values'] = offnames
+    #offenseselect['values'] = offnames
     generatebutton.config(state='active')
 
 
@@ -245,26 +223,98 @@ def nullchecker(testframe):
     return True
 
 
-def seteasy():
-    percententry.config(state='normal')
-    settext(percententry, "25")
-    percententry.config(state='disabled')
+def verifystats():
+    if not str.isdigit(hpbox.get()):
+        print("inputted HP was invalid")
+        return False
+    if not str.isdigit(strbox.get()):
+        print("inputted Strength was invalid")
+        return False
+    if not str.isdigit(magbox.get()):
+        print("inputted Magic was invalid")
+        return False
+    if not str.isdigit(sklbox.get()):
+        print("inputted Skill was invalid")
+        return False
+    if not str.isdigit(spdbox.get()):
+        print("inputted Speed was invalid")
+        return False
+    if not str.isdigit(luckbox.get()):
+        print("inputted Luck was invalid")
+        return False
+    if not str.isdigit(defbox.get()):
+        print("inputted Defense was invalid")
+        return False
+    if not str.isdigit(resbox.get()):
+        print("inputted Resistance was invalid")
+        return False
+    return True
 
 
-def setmed():
-    percententry.config(state='normal')
-    settext(percententry, "50")
-    percententry.config(state='disabled')
+def showmatchup():
+    global enemystats
+    playerinfo = "Player\n"
+    enemyinfo = "Enemy\n"
+    if playerselect.get() == "":
+        createerror("No player was selected in the dropdown.")
+    else:
+        found = False
+        for i in range(len(playerobjects)):
+            if playerobjects[i].name == playerselect.get():
+                tempplayer = playerobjects[i]
+                found = True
+                # calculate hit, avoid, damage, crit, and display speed like in nealboot, also dps below everything
+                playerhit = calculatehit(tempplayer.basehit, tempplayer.skill, tempplayer.luck)
+                playeravoid = calculateavoid(tempplayer.baseavoid, tempplayer.speed, tempplayer.luck)
+                enemyhit = calculatehit(0, enemystats[3], enemystats[5])
+                enemyavoid = calculateavoid(0, enemystats[4], enemystats[5])
+                playercrit = calculatecrit(tempplayer.skill, enemystats[5])
+                enemycrit = calculatecrit(enemystats[3], tempplayer.luck)
+                playerinfo += "Hit: " + str(playerhit) + "\n"
+                playerinfo += "Avoid: " + str(playeravoid) + "\n"
+                playerinfo += "Hitrate: "
+                if playerhit - enemyavoid > 20:
+                    playerinfo += "100%\n"
+                elif playerhit - enemyavoid < 1:
+                    playerinfo += "5%\n"
+                else:
+                    playerinfo += str((playerhit - enemyavoid) * 5) + "%"
+                playerinfo += "Damage: "
+                if tempplayer.offensivestat == "STR":
+                    playerinfo += str(tempplayer.strength - enemystats[6]) + "\n"
+                else:
+                    playerinfo += str(tempplayer.magic - enemystats[7]) + "\n"
+                playerinfo += "Speed: " + str(tempplayer.speed) + "\n"
+                playerinfo += "Crit: " + str(playercrit * 100) + "%\n"
+                playerinfo += "DPS: "
+                if tempplayer.offensivestat == "STR":
+                    playerinfo += str(calculatedps(calculatehitrate(playerhit, enemyavoid), playercrit, tempplayer.strength, enemystats[6], calculatedouble(tempplayer.speed, enemystats[4]))) + "\n"
+                else:
+                    playerinfo += str(calculatedps(calculatehitrate(playerhit, enemyavoid), playercrit, tempplayer.magic, enemystats[7], calculatedouble(tempplayer.speed, enemystats[4]))) + "\n"
 
+                enemyinfo += "Hit: " + str(enemyhit) + "\n"
+                enemyinfo += "Avoid: " + str(enemyavoid) + "\n"
+                enemyinfo += "Hitrate: "
+                if enemyhit - playeravoid > 20:
+                    enemyinfo += "100%\n"
+                elif enemyhit - playeravoid < 1:
+                    enemyinfo += "5%\n"
+                else:
+                    enemyinfo += str((enemyhit - playeravoid) * 5) + "%\n"
+                enemyinfo += "Damage: " + str(max(enemystats[1] - tempplayer.defense, enemystats[2] - tempplayer.resistance)) + "\n"
+                enemyinfo += "Speed: " + str(enemystats[4]) + "\n"
+                enemyinfo += "Crit: " + str(enemycrit * 100) + "%\n"
+                enemyinfo += "DPS: "
+                if (enemystats[1] - tempplayer.defense) > (enemystats[2] - tempplayer.resistance):
+                    enemyinfo += str(calculatedps(calculatehitrate(enemyhit, playeravoid), enemycrit, enemystats[1], tempplayer.defense, calculatedouble(enemystats[4], tempplayer.speed))) + "\n"
+                else:
+                    enemyinfo += str(calculatedps(calculatehitrate(enemyhit, playeravoid), enemycrit, enemystats[2], tempplayer.resistance, calculatedouble(enemystats[4], tempplayer.speed))) + "\n"
+                forecastplayer.config(text=playerinfo)
+                forecastenemy.config(text=enemyinfo)
 
-def sethard():
-    percententry.config(state='normal')
-    settext(percententry, "75")
-    percententry.config(state='disabled')
+        if not found:
+            createerror("An error occurred when finding the player. Contact the developer for more help.")
 
-
-def setcust():
-    percententry.config(state='normal')
 
 
 m = tk.Tk()
@@ -299,29 +349,71 @@ enemyforecast = tk.Frame(forecastframe, height=200, width=147)
 enemyforecast.grid(column=0, row=0)
 enemyforecast.grid_propagate(False)
 
-generatebutton = tk.Button(optionframe2, text="Generate", fg='green', state='disabled', command=generate)
-generatebutton.grid(row=5)
+hplabel = tk.Label(optionframe2, text="HP:")
+hplabel.grid(column=0, row=0)
+hpbox = tk.Entry(optionframe2, width=6, justify='left')
+hpbox.grid(column=1, row=0)
+hpbox.insert(0, "0")
 
-percententry = tk.Entry(optionframe2, width=10, state='disabled')
-percententry.grid(row=4)
-settext(percententry, "0")
+strlabel = tk.Label(optionframe2, text="Strength:")
+strlabel.grid(column=0, row=1)
+strbox = tk.Entry(optionframe2, width=6, justify='left')
+strbox.grid(column=1, row=1)
+strbox.insert(0, "0")
+
+maglabel = tk.Label(optionframe2, text="Magic:")
+maglabel.grid(column=0, row=2)
+magbox = tk.Entry(optionframe2, width=6, justify='left')
+magbox.grid(column=1, row=2)
+magbox.insert(0, "0")
+
+skllabel = tk.Label(optionframe2, text="Skill:")
+skllabel.grid(column=0, row=3)
+sklbox = tk.Entry(optionframe2, width=6, justify='left')
+sklbox.grid(column=1, row=3)
+sklbox.insert(0, "0")
+
+spdlabel = tk.Label(optionframe2, text="Speed:")
+spdlabel.grid(column=0, row=4)
+spdbox = tk.Entry(optionframe2, width=6, justify='left')
+spdbox.grid(column=1, row=4)
+spdbox.insert(0, "0")
+
+lucklabel = tk.Label(optionframe2, text="Luck:")
+lucklabel.grid(column=0, row=5)
+luckbox = tk.Entry(optionframe2, width=6, justify='left')
+luckbox.grid(column=1, row=5)
+luckbox.insert(0, "0")
+
+deflabel = tk.Label(optionframe2, text="Defense:")
+deflabel.grid(column=0, row=6)
+defbox = tk.Entry(optionframe2, width=6, justify='left')
+defbox.grid(column=1, row=6)
+defbox.insert(0, "0")
+
+reslabel = tk.Label(optionframe2, text="Resistance:")
+reslabel.grid(column=0, row=7)
+resbox = tk.Entry(optionframe2, width=6, justify='left')
+resbox.grid(column=1, row=7)
+resbox.insert(0, "0")
+
+generatebutton = tk.Button(optionframe2, text="Test", fg='green', command=generate, width=10, state='disabled')
+generatebutton.grid(column=0, row=8, columnspan=2)
 
 instructions = tk.Label(instructframe, text="To generate enemies, first input a .csv file containing all your players "
                                             "in the following format: Name, HP, Strength, Magic, Skill, Speed, Luck, "
                                             "Defense, Resistance, Base Hit, Base Avoid, Base Crit, and Offensive "
-                                            "Stat. By default, there are three options for easy, medium, and hard "
-                                            "enemies. You can also input a custom percentage of players you want the "
-                                            "enemy to be stronger than on average. Do note that this currently does not"
-                                            " take enemy skills into account so you will likely need to adjust it "
-                                            "accordingly.", wraplength=800, justify='left')
+                                            "Stat. Then input the enemy's stats in the boxes on the bottom right. "
+                                            "Do note that this currently does not take enemy skills  and weapons into "
+                                            "account so you will likely need to adjust it accordingly.", wraplength=800, justify='left')
 instructions.grid()
 
-forecastenemy = tk.Label(enemyforecast, text="Enemy Forecast", wraplength=140, justify='left')
-forecastplayer = tk.Label(playerforecast, text="Player Forecast", wraplength=140, justify='left')
+forecastenemy = tk.Label(enemyforecast, wraplength=140, justify='left')
+forecastplayer = tk.Label(playerforecast, wraplength=140, justify='left')
 forecastenemy.grid()
 forecastplayer.grid()
 
-outputtext = tk.Label(outputframe, text="Enemy Output")
+outputtext = tk.Label(outputframe)
 outputtext.grid()
 
 fileinputdesc = tk.Label(optionframe1, text="Select CSV", wraplength=300, justify='left')
@@ -333,27 +425,16 @@ fileinput.grid(row=1, column=0)
 filebutton = tk.Button(optionframe1, command=selectfile, text="Select File")
 filebutton.grid(row=1, column=1)
 
-easy = tk.Radiobutton(optionframe2, text='Easy', value=0, command=seteasy)
-medium = tk.Radiobutton(optionframe2, text='Medium', value=1, command=setmed)
-hard = tk.Radiobutton(optionframe2, text='Hard', value=2, command=sethard)
-custom = tk.Radiobutton(optionframe2, text='Custom', value=3, command=setcust)
-easy.grid(row=0)
-medium.grid(row=1)
-hard.grid(row=2)
-custom.grid(row=3)
-easy.select()
-medium.deselect()
-hard.deselect()
-custom.deselect()
-
-offensedesc = tk.Label(optionframe1, text="Select Offensive Stat", wraplength=300, justify='left')
-offensedesc.grid(row=2, column=0)
-offenseselect = ttk.Combobox(optionframe1)
-offenseselect.grid(row=3, column=0)
+#offensedesc = tk.Label(optionframe1, text="Select Offensive Stat", wraplength=300, justify='left')
+#offensedesc.grid(row=2, column=0)
+#offenseselect = ttk.Combobox(optionframe1)
+#offenseselect.grid(row=3, column=0)
 
 playerdesc = tk.Label(optionframe1, text="Select Player for Forecast", wraplength=300, justify='left')
 playerdesc.grid(row=4, column=0)
 playerselect = ttk.Combobox(optionframe1, values=playerlist)
 playerselect.grid(row=5, column=0)
+testplayer = tk.Button(optionframe1, text="Test Player", state='disabled', command=showmatchup)
+testplayer.grid(row=5, column=1)
 
 m.mainloop()
