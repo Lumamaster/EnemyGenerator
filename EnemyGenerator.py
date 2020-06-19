@@ -52,11 +52,11 @@ def createerror(text):
 
 
 def calculateavoid(baseavoid, speed, luck):
-    return baseavoid + math.floor(speed/4) * 2 + math.floor(luck/5)
+    return baseavoid + math.floor(speed/int(spdtoavoidbox.get())) * int(spdavoidbonusbox.get()) + math.floor(luck/int(lucktobonusbox.get())) * int(bonusfromluckbox.get())
 
 
 def calculatehit(basehit, skill, luck):
-    return basehit + math.floor(skill/3) + math.floor(luck/5)
+    return basehit + math.floor(skill/int(skltohitbox.get()))*int(hitbonusbox.get()) + math.floor(luck/int(lucktobonusbox.get())) * int(bonusfromluckbox.get())
 
 
 def calculatecrit(enemyskill, playerluck):
@@ -107,17 +107,15 @@ def settext(e, s):
 def calculatematchup(player, enemy):
     php = player.HP
     ehp = enemy[0]
-    pdps = 0
     if player.offensivestat == "STR":
-        pdps = calculatedps(calculatehitrate(calculatehit(player.basehit, player.skill, player.luck), calculateavoid(7, enemy[4], enemy[5])), calculatecrit(player.skill, enemy[5]), player.strength, enemy[6], calculatedouble(player.speed, enemy[4]))
+        pdps = calculatedps(calculatehitrate(calculatehit(player.basehit, player.skill, player.luck), calculateavoid(enemy[9], enemy[4], enemy[5])), calculatecrit(player.skill, enemy[5]), player.strength, enemy[6], calculatedouble(player.speed, enemy[4]))
     else:
-        pdps = calculatedps(calculatehitrate(calculatehit(player.basehit, player.skill, player.luck), calculateavoid(7, enemy[4], enemy[5])), calculatecrit(player.skill, enemy[5]), player.magic, enemy[7], calculatedouble(player.speed, enemy[4]))
+        pdps = calculatedps(calculatehitrate(calculatehit(player.basehit, player.skill, player.luck), calculateavoid(enemy[9], enemy[4], enemy[5])), calculatecrit(player.skill, enemy[5]), player.magic, enemy[7], calculatedouble(player.speed, enemy[4]))
     print("player dps: " + str(pdps))
-    edps = 0
     if enemy[1] > enemy[2]:
-        edps = calculatedps(calculatehitrate(calculatehit(0, enemy[3], enemy[5]), calculateavoid(player.baseavoid, player.speed, player.luck)), calculatecrit(enemy[3], player.luck), enemy[1], player.defense, calculatedouble(enemy[4], player.speed))
+        edps = calculatedps(calculatehitrate(calculatehit(enemy[8], enemy[3], enemy[5]), calculateavoid(player.baseavoid, player.speed, player.luck)), calculatecrit(enemy[3], player.luck), enemy[1], player.defense, calculatedouble(enemy[4], player.speed))
     else:
-        edps = calculatedps(calculatehitrate(calculatehit(0, enemy[3], enemy[5]), calculateavoid(player.baseavoid, player.speed, player.luck)), calculatecrit(enemy[3], player.luck), enemy[2], player.resistance, calculatedouble(enemy[4], player.speed))
+        edps = calculatedps(calculatehitrate(calculatehit(enemy[8], enemy[3], enemy[5]), calculateavoid(player.baseavoid, player.speed, player.luck)), calculatecrit(enemy[3], player.luck), enemy[2], player.resistance, calculatedouble(enemy[4], player.speed))
     print("enemy dps: " + str(edps))
     loopbreak = 0
     while php > 0 and ehp > 0 and loopbreak < 10:
@@ -131,15 +129,10 @@ def calculatematchup(player, enemy):
 
 
 def validate(stats, players):
-    print("testting statrange " + str(stats))
     playerwins = 0
     for i in range(len(players)):
-        print("testting matchup vs " + players[i].name)
         if calculatematchup(players[i], stats):
-            print("matchup won")
             playerwins += 1
-        else:
-            print("matchup lost")
     return playerwins
 
 
@@ -150,10 +143,10 @@ def generate():
     if not verifystats():
         createerror("One or more enemy stats were invalid! Please make sure that they are all positive integers.")
     else:
-        generatedstats = [int(hpbox.get()), int(strbox.get()), int(magbox.get()), int(sklbox.get()), int(spdbox.get()), int(luckbox.get()), int(defbox.get()), int(resbox.get())]
+        generatedstats = [int(hpbox.get()), int(strbox.get()), int(magbox.get()), int(sklbox.get()), int(spdbox.get()), int(luckbox.get()), int(defbox.get()), int(resbox.get()), int(hitbox.get()), int(avoidbox.get())]
         # get percentage of players enemy can beat, set to 50 by default if invalid value
         wins = validate(generatedstats, playerobjects)
-        statstring = "This generic wins against " + str(wins) + " players."
+        statstring = "This generic wins against " + str(wins) + " player(s)."
         outputtext['text'] = statstring
         enemystats = generatedstats
         testplayer.config(state='active')
@@ -208,7 +201,6 @@ def selectfile():
     offnames = []
     for o in offstats:
         offnames.append(o)
-    #offenseselect['values'] = offnames
     generatebutton.config(state='active')
 
 
@@ -248,6 +240,30 @@ def verifystats():
     if not str.isdigit(resbox.get()):
         print("inputted Resistance was invalid")
         return False
+    if not str.isdigit(hitbox.get()):
+        print("inputted Base Hit was invalid")
+        return False
+    if not str.isdigit(avoidbox.get()):
+        print("inputted Base Avoid was invalid")
+        return False
+    if not str.isdigit(skltohitbox.get()):
+        print("inputted skill per hit bonus was invalid")
+        return False
+    if not str.isdigit(hitbonusbox.get()):
+        print("inputted bonus hit per skill bonus was invalid")
+        return False
+    if not str.isdigit(spdtoavoidbox.get()):
+        print("inputted speed per avoid bonus was invalid")
+        return False
+    if not str.isdigit(spdavoidbonusbox.get()):
+        print("inputted bonus avoid from speed was invalid")
+        return False
+    if not str.isdigit(lucktobonusbox.get()):
+        print("inputted luck per bonus was invalid")
+        return False
+    if not str.isdigit(bonusfromluckbox.get()):
+        print("inputted bonus from luck was invalid")
+        return False
     return True
 
 
@@ -263,22 +279,21 @@ def showmatchup():
             if playerobjects[i].name == playerselect.get():
                 tempplayer = playerobjects[i]
                 found = True
-                # calculate hit, avoid, damage, crit, and display speed like in nealboot, also dps below everything
                 playerhit = calculatehit(tempplayer.basehit, tempplayer.skill, tempplayer.luck)
                 playeravoid = calculateavoid(tempplayer.baseavoid, tempplayer.speed, tempplayer.luck)
-                enemyhit = calculatehit(0, enemystats[3], enemystats[5])
-                enemyavoid = calculateavoid(0, enemystats[4], enemystats[5])
+                enemyhit = calculatehit(enemystats[8], enemystats[3], enemystats[5])
+                enemyavoid = calculateavoid(enemystats[9], enemystats[4], enemystats[5])
                 playercrit = calculatecrit(tempplayer.skill, enemystats[5])
                 enemycrit = calculatecrit(enemystats[3], tempplayer.luck)
                 playerinfo += "Hit: " + str(playerhit) + "\n"
                 playerinfo += "Avoid: " + str(playeravoid) + "\n"
                 playerinfo += "Hitrate: "
-                if playerhit - enemyavoid > 20:
+                if 20 + playerhit - enemyavoid > 20:
                     playerinfo += "100%\n"
-                elif playerhit - enemyavoid < 1:
+                elif 20 + playerhit - enemyavoid < 1:
                     playerinfo += "5%\n"
                 else:
-                    playerinfo += str((playerhit - enemyavoid) * 5) + "%"
+                    playerinfo += str((20 + playerhit - enemyavoid) * 5) + "%\n"
                 playerinfo += "Damage: "
                 if tempplayer.offensivestat == "STR":
                     playerinfo += str(tempplayer.strength - enemystats[6]) + "\n"
@@ -295,12 +310,12 @@ def showmatchup():
                 enemyinfo += "Hit: " + str(enemyhit) + "\n"
                 enemyinfo += "Avoid: " + str(enemyavoid) + "\n"
                 enemyinfo += "Hitrate: "
-                if enemyhit - playeravoid > 20:
+                if 20 + enemyhit - playeravoid > 20:
                     enemyinfo += "100%\n"
-                elif enemyhit - playeravoid < 1:
+                elif 20 + enemyhit - playeravoid < 1:
                     enemyinfo += "5%\n"
                 else:
-                    enemyinfo += str((enemyhit - playeravoid) * 5) + "%\n"
+                    enemyinfo += str((20 + enemyhit - playeravoid) * 5) + "%\n"
                 enemyinfo += "Damage: " + str(max(enemystats[1] - tempplayer.defense, enemystats[2] - tempplayer.resistance)) + "\n"
                 enemyinfo += "Speed: " + str(enemystats[4]) + "\n"
                 enemyinfo += "Crit: " + str(enemycrit * 100) + "%\n"
@@ -329,7 +344,7 @@ outputframe = tk.Frame(m, height=400, width=300, bd=3, relief='ridge')
 outputframe.grid(row=1, column=0, rowspan=2)
 outputframe.grid_propagate(False)
 
-optionframe1 = tk.Frame(m, height=200, width=300, bd=3, relief='ridge')
+optionframe1 = tk.Frame(m, height=250, width=300, bd=3, relief='ridge')
 optionframe1.grid(row=1, column=1)
 optionframe1.grid_propagate(False)
 
@@ -337,7 +352,7 @@ optionframe2 = tk.Frame(m, height=400, width=200, bd=3, relief='ridge')
 optionframe2.grid(row=1, column=2, rowspan=2)
 optionframe2.grid_propagate(False)
 
-forecastframe = tk.Frame(m, height=200, width=300, bd=3, relief='ridge')
+forecastframe = tk.Frame(m, height=150, width=300, bd=3, relief='ridge')
 forecastframe.grid(row=2, column=1)
 forecastframe.grid_propagate(False)
 
@@ -397,15 +412,30 @@ resbox = tk.Entry(optionframe2, width=6, justify='left')
 resbox.grid(column=1, row=7)
 resbox.insert(0, "0")
 
+hitlabel = tk.Label(optionframe2, text="Base Hit:")
+hitlabel.grid(column=0, row=8)
+hitbox = tk.Entry(optionframe2, width=6, justify='left')
+hitbox.grid(column=1, row=8)
+hitbox.insert(0, "0")
+
+avoidlabel = tk.Label(optionframe2, text="Base Avoid:")
+avoidlabel.grid(column=0, row=9)
+avoidbox = tk.Entry(optionframe2, width=6, justify='left')
+avoidbox.grid(column=1, row=9)
+avoidbox.insert(0, "0")
+
 generatebutton = tk.Button(optionframe2, text="Test", fg='green', command=generate, width=10, state='disabled')
-generatebutton.grid(column=0, row=8, columnspan=2)
+generatebutton.grid(column=0, row=10, columnspan=2)
 
 instructions = tk.Label(instructframe, text="To generate enemies, first input a .csv file containing all your players "
                                             "in the following format: Name, HP, Strength, Magic, Skill, Speed, Luck, "
                                             "Defense, Resistance, Base Hit, Base Avoid, Base Crit, and Offensive "
                                             "Stat. Then input the enemy's stats in the boxes on the bottom right. "
                                             "Do note that this currently does not take enemy skills  and weapons into "
-                                            "account so you will likely need to adjust it accordingly.", wraplength=800, justify='left')
+                                            "account so you will likely need to adjust it accordingly. If you want to "
+                                            "recalculate player matchups, you will have to use the test button again "
+                                            "after you have changed your stat parameters.", wraplength=800,
+                                            justify='left')
 instructions.grid()
 
 forecastenemy = tk.Label(enemyforecast, wraplength=140, justify='left')
@@ -425,16 +455,47 @@ fileinput.grid(row=1, column=0)
 filebutton = tk.Button(optionframe1, command=selectfile, text="Select File")
 filebutton.grid(row=1, column=1)
 
-#offensedesc = tk.Label(optionframe1, text="Select Offensive Stat", wraplength=300, justify='left')
-#offensedesc.grid(row=2, column=0)
-#offenseselect = ttk.Combobox(optionframe1)
-#offenseselect.grid(row=3, column=0)
-
 playerdesc = tk.Label(optionframe1, text="Select Player for Forecast", wraplength=300, justify='left')
 playerdesc.grid(row=4, column=0)
 playerselect = ttk.Combobox(optionframe1, values=playerlist)
 playerselect.grid(row=5, column=0)
 testplayer = tk.Button(optionframe1, text="Test Player", state='disabled', command=showmatchup)
 testplayer.grid(row=5, column=1)
+
+skldesc = tk.Label(optionframe1, text="Skill per hit bonus", wraplength=300, justify='left')
+skldesc.grid(row=6, column=0)
+skltohitbox = tk.Entry(optionframe1, width=6, justify='left')
+skltohitbox.grid(row=6, column=1)
+skltohitbox.insert(0, "3")
+
+sklhitbonusdesc = tk.Label(optionframe1, text="Hit bonus per skill benefit", wraplength=300, justify='left')
+sklhitbonusdesc.grid(row=7, column=0)
+hitbonusbox = tk.Entry(optionframe1, width=6, justify='left')
+hitbonusbox.grid(row=7, column=1)
+hitbonusbox.insert(0, "1")
+
+spddesc = tk.Label(optionframe1, text="Speed per avoid bonus", wraplength=300, justify='left')
+spddesc.grid(row=8, column=0)
+spdtoavoidbox = tk.Entry(optionframe1, width=6, justify='left')
+spdtoavoidbox.grid(row=8, column=1)
+spdtoavoidbox.insert(0, "3")
+
+spdavoidbonusdesc = tk.Label(optionframe1, text="Avoid bonus per speed benefit", wraplength=300, justify='left')
+spdavoidbonusdesc.grid(row=9, column=0)
+spdavoidbonusbox = tk.Entry(optionframe1, width=6, justify='left')
+spdavoidbonusbox.grid(row=9, column=1)
+spdavoidbonusbox.insert(0, "1")
+
+luckdesc = tk.Label(optionframe1, text="Luck per hit/avoid bonus", wraplength=300, justify='left')
+luckdesc.grid(row=10, column=0)
+lucktobonusbox = tk.Entry(optionframe1, width=6, justify='left')
+lucktobonusbox.grid(row=10, column=1)
+lucktobonusbox.insert(0, "5")
+
+luckbonusdesc = tk.Label(optionframe1, text="Hit/avoid bonus per luck benefit", wraplength=300, justify='left')
+luckbonusdesc.grid(row=11, column=0)
+bonusfromluckbox = tk.Entry(optionframe1, width=6, justify='left')
+bonusfromluckbox.grid(row=11, column=1)
+bonusfromluckbox.insert(0, "1")
 
 m.mainloop()
