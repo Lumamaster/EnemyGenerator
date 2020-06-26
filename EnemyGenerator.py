@@ -64,7 +64,7 @@ def calculatecrit(enemyskill, playerluck):
 
 
 def calculatehitrate(hit, avoid):
-    return max(min(1, (hit - avoid)/20), 0.05)
+    return max(min(1, (20 + hit - avoid)/20), 0.05)
 
 
 def calculatedouble(enemyspeed, playerspeed):
@@ -79,11 +79,11 @@ def calculatedps(hitrate, critrate, attackstat, defenderstat, candouble):
     if basedamage == 0:
         return 0
     basedamage *= hitrate
-    if critrate >= hitrate:
+    if critrate >= 20:
         basedamage *= 3
     else:
         if critrate > 0:
-            critpercent = critrate/hitrate
+            critpercent = critrate/20
             basedamage = basedamage * (1 - critpercent) + basedamage * critpercent * 3
     if candouble:
         basedamage *= 2
@@ -107,16 +107,16 @@ def settext(e, s):
 def calculatematchup(player, enemy):
     php = player.HP
     ehp = enemy[0]
-    if player.offensivestat == "STR":
+    if player.strength > player.magic:
+        print(player.name + " is using strength")
         pdps = calculatedps(calculatehitrate(calculatehit(player.basehit, player.skill, player.luck), calculateavoid(enemy[9], enemy[4], enemy[5])), calculatecrit(player.skill, enemy[5]), player.strength, enemy[6], calculatedouble(player.speed, enemy[4]))
     else:
+        print(player.name + " is using magic")
         pdps = calculatedps(calculatehitrate(calculatehit(player.basehit, player.skill, player.luck), calculateavoid(enemy[9], enemy[4], enemy[5])), calculatecrit(player.skill, enemy[5]), player.magic, enemy[7], calculatedouble(player.speed, enemy[4]))
-    print("player dps: " + str(pdps))
     if enemy[1] > enemy[2]:
         edps = calculatedps(calculatehitrate(calculatehit(enemy[8], enemy[3], enemy[5]), calculateavoid(player.baseavoid, player.speed, player.luck)), calculatecrit(enemy[3], player.luck), enemy[1], player.defense, calculatedouble(enemy[4], player.speed))
     else:
         edps = calculatedps(calculatehitrate(calculatehit(enemy[8], enemy[3], enemy[5]), calculateavoid(player.baseavoid, player.speed, player.luck)), calculatecrit(enemy[3], player.luck), enemy[2], player.resistance, calculatedouble(enemy[4], player.speed))
-    print("enemy dps: " + str(edps))
     loopbreak = 0
     while php > 0 and ehp > 0 and loopbreak < 10:
         php -= edps
@@ -130,10 +130,13 @@ def calculatematchup(player, enemy):
 
 def validate(stats, players):
     playerwins = 0
+    playerlist = ""
     for i in range(len(players)):
         if calculatematchup(players[i], stats):
             playerwins += 1
-    return playerwins
+            playerlist += players[i].name + "\n"
+    result = "This generic wins against " + str(playerwins) + " players.\nPlayers: " + playerlist
+    return result
 
 
 def generate():
@@ -144,10 +147,8 @@ def generate():
         createerror("One or more enemy stats were invalid! Please make sure that they are all positive integers.")
     else:
         generatedstats = [int(hpbox.get()), int(strbox.get()), int(magbox.get()), int(sklbox.get()), int(spdbox.get()), int(luckbox.get()), int(defbox.get()), int(resbox.get()), int(hitbox.get()), int(avoidbox.get())]
-        # get percentage of players enemy can beat, set to 50 by default if invalid value
         wins = validate(generatedstats, playerobjects)
-        statstring = "This generic wins against " + str(wins) + " player(s)."
-        outputtext['text'] = statstring
+        outputtext['text'] = wins
         enemystats = generatedstats
         testplayer.config(state='active')
 
@@ -295,14 +296,14 @@ def showmatchup():
                 else:
                     playerinfo += str((20 + playerhit - enemyavoid) * 5) + "%\n"
                 playerinfo += "Damage: "
-                if tempplayer.offensivestat == "STR":
+                if tempplayer.strength > tempplayer.magic:
                     playerinfo += str(tempplayer.strength - enemystats[6]) + "\n"
                 else:
                     playerinfo += str(tempplayer.magic - enemystats[7]) + "\n"
                 playerinfo += "Speed: " + str(tempplayer.speed) + "\n"
                 playerinfo += "Crit: " + str(playercrit * 100) + "%\n"
                 playerinfo += "DPS: "
-                if tempplayer.offensivestat == "STR":
+                if tempplayer.strength > tempplayer.magic:
                     playerinfo += str(calculatedps(calculatehitrate(playerhit, enemyavoid), playercrit, tempplayer.strength, enemystats[6], calculatedouble(tempplayer.speed, enemystats[4]))) + "\n"
                 else:
                     playerinfo += str(calculatedps(calculatehitrate(playerhit, enemyavoid), playercrit, tempplayer.magic, enemystats[7], calculatedouble(tempplayer.speed, enemystats[4]))) + "\n"
